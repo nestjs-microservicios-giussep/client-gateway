@@ -5,12 +5,15 @@ import {
   Get,
   Inject,
   Param,
+  ParseIntPipe,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
-import { ClientProxy } from '@nestjs/microservices';
-
+import { ClientProxy, RpcException } from '@nestjs/microservices';
+import { catchError, firstValueFrom } from 'rxjs';
 import { PRODUCT_SERVICE } from '../config';
+import { CreateProductDto, PaginationDto, UpdateProductDto } from '../common';
 
 @Controller('products')
 export class ProductsController {
@@ -19,27 +22,56 @@ export class ProductsController {
   ) {}
 
   @Post()
-  createProduct() {
-    return 'Crea un producto';
+  createProduct(@Body() createProductDto: CreateProductDto) {
+    return this.productsClient.send(
+      { cmd: 'create_product' },
+      createProductDto,
+    );
   }
 
   @Get()
-  FindAllProducts() {
-    return this.productsClient.send({ cmd: 'find_all_product' }, {});
+  findAllProducts(@Query() paginationDto: PaginationDto) {
+    return this.productsClient.send({ cmd: 'find_all_product' }, paginationDto);
   }
 
   @Get(':id')
-  FindProduct(@Param('id') id: string) {
-    return `Esta función regresa el producto número ${id}`;
+  async findProduct(@Param('id') id: string) {
+    try {
+      const product = await firstValueFrom(
+        this.productsClient.send({ cmd: 'find_one_product' }, { id }),
+      );
+      return product;
+    } catch (error) {
+      throw new RpcException(error);
+    }
   }
 
   @Delete(':id')
   deleteProduct(@Param('id') id: string) {
-    return `Esta función elimina el producto número ${id}`;
+    return this.productsClient.send({ cmd: 'delete_product' }, { id }).pipe(
+      catchError((err) => {
+        throw new RpcException(err);
+      }),
+    );
   }
 
   @Patch(':id')
-  patchProduct(@Param('id') id: string, @Body() body: any) {
-    return `Esta función actualiza el producto número ${id}`;
+  patchProduct(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateProductDto: UpdateProductDto,
+  ) {
+    return this.productsClient
+      .send(
+        { cmd: 'update_product' },
+        {
+          id,
+          ...updateProductDto,
+        },
+      )
+      .pipe(
+        catchError((err) => {
+          throw new RpcException(err);
+        }),
+      );
   }
 }
