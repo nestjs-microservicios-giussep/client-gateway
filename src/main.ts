@@ -17,7 +17,7 @@ async function bootstrap() {
   );
   app.useGlobalFilters(new RpcCustomExceptionFilter());
 
-  console.log('primer cambio')
+  console.log('segundo cambio')
   await app.listen(env.port);
   logger.log(`Server corriendo en ${env.port}`);
 }
