@@ -1,14 +1,21 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { env } from './config';
-import { Logger, ValidationPipe } from '@nestjs/common';
+import { Logger, RequestMethod, ValidationPipe } from '@nestjs/common';
 import { RpcCustomExceptionFilter } from './common';
 
 async function bootstrap() {
   const logger = new Logger('MainGateway');
   const app = await NestFactory.create(AppModule);
 
-  app.setGlobalPrefix('api');
+  app.setGlobalPrefix('api', {
+    exclude: [
+      {
+        path: '',
+        method: RequestMethod.GET,
+      },
+    ],
+  });
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -17,7 +24,7 @@ async function bootstrap() {
   );
   app.useGlobalFilters(new RpcCustomExceptionFilter());
 
-  console.log('segundo cambio')
+  console.log('segundo cambio');
   await app.listen(env.port);
   logger.log(`Server corriendo en ${env.port}`);
 }
